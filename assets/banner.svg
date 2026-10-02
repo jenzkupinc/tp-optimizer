@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="320" viewBox="0 0 1200 320" role="img" aria-label="TP Optimizer">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b3b4a"/>
+      <stop offset="0.55" stop-color="#127c8c"/>
+      <stop offset="1" stop-color="#f08a24"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="320" rx="28" fill="url(#bg)"/>
+  <text x="70" y="150" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="92" font-weight="800" fill="#ffffff">TP Optimizer</text>
+  <text x="74" y="212" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="34" fill="#e8f6f8">Tu Mac más rápido. Gratis. Sin telemetría.</text>
+  <g font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="26" font-weight="700">
+    <rect x="74" y="240" width="190" height="46" rx="23" fill="#ffffff"/><text x="102" y="272" fill="#0b3b4a">1 · Boost</text>
+    <rect x="280" y="240" width="250" height="46" rx="23" fill="#ffffff" fill-opacity="0.2"/><text x="308" y="272" fill="#ffffff">2 · Modo juego</text>
+    <rect x="546" y="240" width="270" height="46" rx="23" fill="#ffffff" fill-opacity="0.2"/><text x="574" y="272" fill="#ffffff">3 · Limpieza</text>
+  </g>
+</svg>
