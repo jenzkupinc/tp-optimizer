@@ -69,7 +69,7 @@ Al terminar, todo vuelve a como estaba.
 | **Limpieza profunda · Archivos grandes · Duplicados** | Los encuentra y los envía a la Papelera |
 | **Discos y respaldo** | Respaldo a un disco externo |
 | **Perfiles · Energía** | Qué apps duermen y qué impide que la Mac descanse |
-| **Red y router** | DNS, equipos conectados y diagnóstico del router |
+| **Red y router** | Tu router, los equipos conectados, sitios bloqueados y el firewall |
 | **Arranque automático · Desinstalar apps** | Lo que se abre solo y lo que dejan las apps |
 | **Scripts y Telegram** | Tus propios scripts y avisos por Telegram, si tú lo activas |
 
