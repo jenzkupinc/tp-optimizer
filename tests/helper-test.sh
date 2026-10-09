@@ -14,11 +14,12 @@ PASS=0; FAIL=0
 
 ok()  { PASS=$((PASS+1)); echo "PASS $1"; }
 bad() { FAIL=$((FAIL+1)); echo "FAIL $1  [$2]"; }
-run() { env ${FAILTOOL:+TP_T_FAIL=$FAILTOOL} TP_T_QOSFILE="$T/qos.rules" TP_T_HELPERDIR="$T/helperdir" TP_T_NEWVERSION="$NV" TP_T_DAEMONS="$T/daemons" TP_T_AGENTS="$T/agents" TP_T_HOSTS="$T/hosts" TP_T_AUDIT="$T/audit" TP_T_CALLS="$T/calls" TP_T_HOME="$T/home" TP_T_LISTAPPS="/Applications/Listada.app" TP_T_FLOWS="$FLOWS" TP_T_SERVICES="$SERVICES" SUDO_UID=$UIDN "$BIN" "$@"; }
+run() { env ${FAILTOOL:+TP_T_FAIL=$FAILTOOL} TP_T_QOSFILE="$T/qos.rules" TP_T_APPS="$T/apps" TP_T_HELPERDIR="$T/helperdir" TP_T_NEWVERSION="$NV" TP_T_DAEMONS="$T/daemons" TP_T_AGENTS="$T/agents" TP_T_HOSTS="$T/hosts" TP_T_AUDIT="$T/audit" TP_T_CALLS="$T/calls" TP_T_HOME="$T/home" TP_T_LISTAPPS="/Applications/Listada.app" TP_T_FLOWS="$FLOWS" TP_T_SERVICES="$SERVICES" SUDO_UID=$UIDN "$BIN" "$@"; }
 calls() { [ -f "$T/calls" ] && cat "$T/calls" || true; }
-reset() { rm -rf "$T/calls" "$T/audit" "$T/qos.rules" "$T/daemons" "$T/agents" "$T/home"; mkdir -p "$T/helperdir" "$T/daemons" "$T/agents" "$T/home/.Trash"; printf '127.0.0.1 localhost\n' > "$T/hosts"; FAILTOOL=""; NV=""; FLOWS=""; }
+reset() { rm -rf "$T/calls" "$T/audit" "$T/qos.rules" "$T/daemons" "$T/agents" "$T/home" "$T/apps"; mkdir -p "$T/apps" "$T/helperdir" "$T/daemons" "$T/agents" "$T/home/.Trash"; printf '127.0.0.1 localhost\n' > "$T/hosts"; FAILTOOL=""; NV=""; FLOWS=""; }
 good() { local what=$1; shift; reset; run "$@" >/dev/null 2>&1; local c=$?; [ $c -eq 0 ] && ok "$what" || bad "$what" "salida $c"; }
 nope() { local what=$1; shift; reset; run "$@" >/dev/null 2>&1; local c=$?; [ $c -eq 65 ] && [ -z "$(calls)" ] && ok "$what" || bad "$what" "salida $c, llamadas: $(calls | tr '\n' '|')"; }
+nopeK() { local what=$1; shift; rm -f "$T/calls"; run "$@" >/dev/null 2>&1; local c=$?; [ $c -eq 65 ] && [ -z "$(calls)" ] && ok "$what" || bad "$what" "salida $c, llamadas: $(calls | tr '\n' '|')"; }
 has() { calls | grep -qF -- "$1"; }
 
 reset
@@ -48,10 +49,10 @@ run hosts malo.com >/dev/null 2>&1; run hosts malo.com >/dev/null 2>&1
 run hosts >/dev/null 2>&1
 ! grep -q "TP Optimizer" "$T/hosts" && grep -q "localhost" "$T/hosts" && ok "hosts sin dominios quita el bloque y deja el resto" || bad "hosts vacío" "$(cat "$T/hosts")"
 before=$(cat "$T/hosts")
-nope "hosts rechaza un dominio con espacio" hosts "a b.com"
-nope "hosts rechaza una inyección con punto y coma" hosts "x.com;rm"
-nope "hosts rechaza un nombre sin punto" hosts localhost
-nope "hosts rechaza una IP como dominio" hosts 1.2.3.4
+nopeK "hosts rechaza un dominio con espacio" hosts "a b.com"
+nopeK "hosts rechaza una inyección con punto y coma" hosts "x.com;rm"
+nopeK "hosts rechaza un nombre sin punto" hosts localhost
+nopeK "hosts rechaza una IP como dominio" hosts 1.2.3.4
 [ "$(cat "$T/hosts")" = "$before" ] && ok "los rechazos no tocaron el archivo hosts" || bad "hosts alterado" ""
 
 reset; mkdir -p "$T/Fake.app"
@@ -151,7 +152,7 @@ run launch sleep com.ejemplo.demonio >/dev/null 2>&1; c=$?
 has "launchctl bootout system/com.ejemplo.demonio" && has "launchctl disable system/com.ejemplo.demonio" && [ $c -eq 0 ] && ok "launch sleep apaga un demonio del sistema" || bad "launch sleep" "salida $c $(calls)"
 reset; cp "$T/p.plist" "$T/agents/com.ejemplo.demonio.plist"
 run launch sleep com.ejemplo.demonio >/dev/null 2>&1; has "disable gui/$UIDN/com.ejemplo.demonio" && ok "un agente de usuario se apaga en su dominio gui/UID" || bad "launch agente" "$(calls)"
-nope "launch sleep rechaza una etiqueta que no existe" launch sleep com.ejemplo.inexistente
+nopeK "launch sleep rechaza una etiqueta que no existe" launch sleep com.ejemplo.inexistente
 nope "launch rechaza etiquetas de Apple" launch sleep com.apple.Finder
 nope "launch rechaza una etiqueta con ruta" launch sleep ../etc/passwd
 nope "launch rechaza una etiqueta con espacio" launch sleep "com.ejemplo demonio"
@@ -159,11 +160,11 @@ nope "launch rechaza una acción desconocida" launch explotar com.ejemplo.demoni
 reset; cp "$T/p.plist" "$T/daemons/com.ejemplo.demonio.plist"
 run launch wake com.ejemplo.demonio "$T/daemons/com.ejemplo.demonio.plist" >/dev/null 2>&1; has "launchctl enable system/com.ejemplo.demonio" && has "launchctl bootstrap system" && ok "launch wake despierta un plist que está en la carpeta permitida" || bad "launch wake" "$(calls)"
 reset; mkdir -p "$T/fuera"; cp "$T/p.plist" "$T/fuera/x.plist"
-nope "launch wake rechaza un plist fuera de las carpetas de launchd" launch wake com.ejemplo.demonio "$T/fuera/x.plist"
+nopeK "launch wake rechaza un plist fuera de las carpetas de launchd" launch wake com.ejemplo.demonio "$T/fuera/x.plist"
 reset; ln -sf "$T/fuera/x.plist" "$T/daemons/escape.plist"
-nope "launch wake rechaza un enlace que escapa de la carpeta" launch wake com.ejemplo.demonio "$T/daemons/escape.plist"
+nopeK "launch wake rechaza un enlace que escapa de la carpeta" launch wake com.ejemplo.demonio "$T/daemons/escape.plist"
 reset; cp "$T/p.plist" "$T/daemons/otra.plist"
-nope "launch wake rechaza si la etiqueta no coincide con el plist" launch wake com.ejemplo.distinta "$T/daemons/otra.plist"
+nopeK "launch wake rechaza si la etiqueta no coincide con el plist" launch wake com.ejemplo.distinta "$T/daemons/otra.plist"
 reset; cp "$T/p.plist" "$T/agents/com.ejemplo.demonio.plist"
 run launch remove com.ejemplo.demonio "$T/agents/com.ejemplo.demonio.plist" >/dev/null 2>&1; c=$?
 [ $c -eq 0 ] && [ ! -e "$T/agents/com.ejemplo.demonio.plist" ] && [ -e "$T/home/.Trash/com.ejemplo.demonio.plist" ] && ok "launch remove manda el plist a la Papelera del usuario" || bad "launch remove" "salida $c"
@@ -172,6 +173,29 @@ cp "$T/p.plist" "$T/agents/com.ejemplo.demonio.plist"; run launch remove com.eje
 reset; cp "$T/p.plist" "$T/agents/com.ejemplo.demonio.plist"
 env TP_T_DAEMONS="$T/daemons" TP_T_AGENTS="$T/agents" TP_T_HOME="$T/home" TP_T_CALLS="$T/calls" TP_T_AUDIT="$T/audit" SUDO_UID=0 "$BIN" launch remove com.ejemplo.demonio "$T/agents/com.ejemplo.demonio.plist" >/dev/null 2>&1
 [ $? -eq 65 ] && [ -e "$T/agents/com.ejemplo.demonio.plist" ] && ok "launch remove se niega si quien pide es root (UID 0)" || bad "launch remove root" ""
+
+mkapp() { mkdir -p "$T/apps/$1.app/Contents/MacOS"; printf '<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict><key>CFBundleIdentifier</key><string>%s</string></dict></plist>' "$2" > "$T/apps/$1.app/Contents/Info.plist"; printf 'x' > "$T/apps/$1.app/Contents/MacOS/$1"; }
+reset; mkapp Real com.fake.real
+run uninstall "$T/apps/Real.app" >/dev/null 2>&1; c=$?
+[ $c -eq 0 ] && [ ! -e "$T/apps/Real.app" ] && [ -e "$T/home/.Trash/Real.app/Contents/Info.plist" ] && ok "uninstall manda una app de /Applications a la Papelera del usuario" || bad "uninstall válido" "salida $c"
+[ -z "$(find "$T/home/.Trash/Real.app" ! -user "$UIDN")" ] && ok "todo lo que entra a la Papelera queda a nombre del usuario, para que vaciarla no pida contraseña" || bad "uninstall dueño" "$(find "$T/home/.Trash/Real.app" ! -user "$UIDN" | head -2)"
+mkapp Real com.fake.real; run uninstall "$T/apps/Real.app" >/dev/null 2>&1
+[ -e "$T/home/.Trash/Real 2.app" ] && ok "uninstall no pisa lo que ya hay en la Papelera" || bad "uninstall duplicado" "$(ls "$T/home/.Trash")"
+reset; mkapp Real com.fake.real; mkapp Apple com.apple.Safari; mkdir -p "$T/apps/Vacia.app/Contents"; mkdir -p "$T/apps/sub"; mkapp Real com.fake.real; mkapp sub/Anidada com.fake.nested 2>/dev/null
+nopeK "uninstall rechaza una ruta relativa" uninstall Real.app
+nopeK "uninstall rechaza una app fuera de /Applications" uninstall /tmp/Otra.app
+nopeK "uninstall rechaza una app dentro de una subcarpeta" uninstall "$T/apps/sub/Anidada.app"
+nopeK "uninstall rechaza algo que no termina en .app" uninstall "$T/apps/Real.app/Contents"
+nopeK "uninstall rechaza subir de carpeta con .." uninstall "$T/apps/../apps/Real.app"
+nopeK "uninstall rechaza las apps de Apple" uninstall "$T/apps/Apple.app"
+nopeK "uninstall rechaza una app sin Info.plist legible" uninstall "$T/apps/Vacia.app"
+nopeK "uninstall rechaza más de una ruta" uninstall "$T/apps/Real.app" "$T/apps/Apple.app"
+nopeK "uninstall exige una ruta" uninstall
+ln -sfn "$T/apps/Real.app" "$T/apps/Enlace.app"
+nopeK "uninstall rechaza un enlace simbólico a una app" uninstall "$T/apps/Enlace.app"
+reset; mkapp Real com.fake.real
+env TP_T_APPS="$T/apps" TP_T_HOME="$T/home" TP_T_CALLS="$T/calls" TP_T_AUDIT="$T/audit" SUDO_UID=0 "$BIN" uninstall "$T/apps/Real.app" >/dev/null 2>&1
+[ $? -eq 65 ] && [ -e "$T/apps/Real.app" ] && ok "uninstall se niega si quien pide es root (UID 0)" || bad "uninstall root" ""
 
 reset; run awdl down >/dev/null 2>&1; run awdl sideways >/dev/null 2>&1
 grep -q "awdl down -> ok" "$T/audit" && grep -q "awdl sideways -> fallo" "$T/audit" && grep -q "uid=$UIDN" "$T/audit" && ok "cada orden queda en el registro con quién la pidió y si salió bien o falló" || bad "registro" "$(cat "$T/audit")"

@@ -1,7 +1,22 @@
 import AppKit
 
+#if TESTING
+enum Hooks {
+    nonisolated(unsafe) static var shell: (@Sendable (String) -> (out: String, status: Int32))?
+    nonisolated(unsafe) static var recycle: (@Sendable ([URL]) -> Int)?
+    nonisolated(unsafe) static var emptyTrash: (@Sendable () -> Bool)?
+    nonisolated(unsafe) static var deletable: (@Sendable (String) -> Bool)?
+}
+func homePath() -> String { ProcessInfo.processInfo.environment["TP_HOME"] ?? NSHomeDirectory() }
+#else
+func homePath() -> String { NSHomeDirectory() }
+#endif
+
 @discardableResult
 func shell(_ cmd: String) -> String {
+    #if TESTING
+    if let h = Hooks.shell { return h(cmd).out }
+    #endif
     let p = Process()
     p.executableURL = URL(fileURLWithPath: "/bin/bash")
     p.arguments = ["-c", cmd]
@@ -15,6 +30,9 @@ func shell(_ cmd: String) -> String {
 }
 
 func shellStatus(_ cmd: String) -> Int32 {
+    #if TESTING
+    if let h = Hooks.shell { return h(cmd).status }
+    #endif
     let p = Process()
     p.executableURL = URL(fileURLWithPath: "/bin/bash")
     p.arguments = ["-c", cmd]
@@ -60,7 +78,7 @@ func humanAge(_ etime: String) -> String {
 }
 
 let appSupport: String = {
-    let dir = NSHomeDirectory() + "/Library/Application Support/TP Optimizer"
+    let dir = homePath() + "/Library/Application Support/TP Optimizer"
     try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
     return dir
 }()
@@ -79,13 +97,19 @@ func folderSize(_ url: URL) -> Int64 {
 }
 
 func recycle(_ urls: [URL]) async -> Int {
-    await withCheckedContinuation { c in
+    #if TESTING
+    if let h = Hooks.recycle { return h(urls) }
+    #endif
+    return await withCheckedContinuation { c in
         NSWorkspace.shared.recycle(urls) { moved, _ in c.resume(returning: moved.count) }
     }
 }
 
 @discardableResult
 func emptyTrash() -> Bool {
+    #if TESTING
+    if let h = Hooks.emptyTrash { return h() }
+    #endif
     var error: NSDictionary?
     NSAppleScript(source: "tell application \"Finder\" to empty trash")?.executeAndReturnError(&error)
     return error == nil

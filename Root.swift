@@ -3,7 +3,7 @@ import Foundation
 enum Root {
     nonisolated static let helper = "/Library/PrivilegedHelperTools/app.tpoptimizer.root"
     nonisolated static let sudoFile = "/etc/sudoers.d/tp-optimizer"
-    nonisolated static let version = "16"
+    nonisolated static let version = "17"
     nonisolated static let requirement = "=identifier \"app.tpoptimizer.root\" and certificate root = H\"SIGNING_HASH\""
 
     nonisolated static var installed: Bool { FileManager.default.fileExists(atPath: helper) && FileManager.default.fileExists(atPath: sudoFile) }

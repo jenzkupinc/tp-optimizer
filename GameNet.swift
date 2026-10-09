@@ -442,7 +442,7 @@ struct GameServerCard: View {
             HStack(spacing: 8) {
                 Button { Task { await g.findServer() } } label: { Label(g.flowsBusy ? "Escuchando…" : "Buscar ahora", systemImage: "scope") }
                     .disabled(g.flowsBusy || g.activePeer == nil)
-                    .help("Escucha el tráfico del iPad durante el tiempo elegido. La primera vez te pide la contraseña para actualizar el ayudante")
+                    .help("Escucha el tráfico del iPad durante el tiempo elegido. Usa el ayudante de administrador: no pide contraseña si ya está activado")
                 Picker("", selection: $g.flowsSeconds) {
                     Text("5 s").tag(5)
                     Text("10 s").tag(10)

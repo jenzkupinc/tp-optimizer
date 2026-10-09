@@ -273,7 +273,7 @@ struct GameTweaksCard: View {
             Text("Mientras esté apagado no funcionan AirDrop, Handoff, Universal Control ni Sidecar.").font(.caption).foregroundStyle(.secondary).lineLimit(2)
         }
         if helperReady == false {
-            Text("La primera vez te pide la contraseña, una sola vez, para actualizar el ayudante.").font(.caption).foregroundStyle(.secondary).lineLimit(2)
+            Text("Usa el ayudante de administrador. Si ya está activado, no pide contraseña.").font(.caption).foregroundStyle(.secondary).lineLimit(2)
         }
     }
 }
@@ -383,7 +383,7 @@ struct GameLabCard: View {
             } else {
                 Button { g.startLab() } label: { Label("Empezar prueba", systemImage: "flask") }
                     .disabled(!ready)
-                    .help("Alterna AirDrop normal y apagado y compara el ping del iPad. La primera vez te pide la contraseña para actualizar el ayudante")
+                    .help("Alterna AirDrop normal y apagado y compara el ping del iPad. Usa el ayudante de administrador: no pide contraseña si ya está activado")
                 if !ready { Text("Necesita al iPad despierto: enciende su pantalla y espera a que la app lo mida.").font(.caption).foregroundStyle(.secondary) }
             }
             if g.labNormal.n + g.labOff.n > 0 { results }

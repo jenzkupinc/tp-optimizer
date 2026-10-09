@@ -15,7 +15,7 @@ struct LaunchItem: Identifiable {
     var running: Bool
     var disabled: Bool
     var domain: String { system ? "system" : "gui/\(getuid())" }
-    var inHome: Bool { plist.path.hasPrefix(NSHomeDirectory()) }
+    var inHome: Bool { plist.path.hasPrefix(homePath()) }
     var place: String { system ? "Servicio del sistema" : inHome ? "Tu usuario" : "Todos los usuarios" }
     var purpose: String {
         if let known = LaunchItem.known[label] { return known }
@@ -50,7 +50,7 @@ final class StartupModel: ObservableObject {
         }
     }
 
-    nonisolated static func find() -> [LaunchItem] {
+    nonisolated static func find(dirs: [(String, Bool)]? = nil) -> [LaunchItem] {
         let uid = getuid()
         let disabledUser = shell("launchctl print-disabled gui/\(uid)")
         let disabledSystem = shell("launchctl print-disabled system")
@@ -63,7 +63,7 @@ final class StartupModel: ObservableObject {
             let c = line.split(whereSeparator: { $0 == " " || $0 == "\t" }).map(String.init)
             if c.count == 3, let pid = Int(c[0]), pid > 0 { live.insert(c[2]) }
         }
-        let dirs: [(String, Bool)] = [(NSHomeDirectory() + "/Library/LaunchAgents", false), ("/Library/LaunchAgents", false), ("/Library/LaunchDaemons", true)]
+        let dirs: [(String, Bool)] = dirs ?? [(homePath() + "/Library/LaunchAgents", false), ("/Library/LaunchAgents", false), ("/Library/LaunchDaemons", true)]
         var out: [LaunchItem] = []
         for (dir, system) in dirs {
             for f in (try? FileManager.default.contentsOfDirectory(atPath: dir)) ?? [] where f.hasSuffix(".plist") {
@@ -102,7 +102,7 @@ final class StartupModel: ObservableObject {
         }
     }
 
-    nonisolated static let backupDir = NSHomeDirectory() + "/Library/Application Support/TP Optimizer/respaldo-arranque"
+    nonisolated static let backupDir = homePath() + "/Library/Application Support/TP Optimizer/respaldo-arranque"
 
     nonisolated static func backups() -> [URL] {
         ((try? FileManager.default.contentsOfDirectory(at: URL(fileURLWithPath: backupDir), includingPropertiesForKeys: nil)) ?? [])
@@ -110,7 +110,7 @@ final class StartupModel: ObservableObject {
     }
 
     func restore(_ backup: URL) {
-        let dest = URL(fileURLWithPath: NSHomeDirectory() + "/Library/LaunchAgents/" + backup.lastPathComponent)
+        let dest = URL(fileURLWithPath: homePath() + "/Library/LaunchAgents/" + backup.lastPathComponent)
         guard !FileManager.default.fileExists(atPath: dest.path) else { status = "\(backup.lastPathComponent) ya está instalado."; return }
         let label = backup.deletingPathExtension().lastPathComponent
         let ok = (try? FileManager.default.copyItem(at: backup, to: dest)) != nil
@@ -125,7 +125,7 @@ final class StartupModel: ObservableObject {
         if item.readable, item.inHome { try? FileManager.default.copyItem(at: item.plist, to: URL(fileURLWithPath: StartupModel.backupDir + "/" + item.plist.lastPathComponent)) }
         Task {
             let ok = await Task.detached { () -> Bool in
-                if item.inHome { return shellStatus("launchctl bootout \(q(item.domain + "/" + item.label)) 2>/dev/null; mv \(q(item.plist.path)) \(q(NSHomeDirectory() + "/.Trash/"))") == 0 }
+                if item.inHome { return shellStatus("launchctl bootout \(q(item.domain + "/" + item.label)) 2>/dev/null; mv \(q(item.plist.path)) \(q(homePath() + "/.Trash/"))") == 0 }
                 return Root.run(["launch", "remove", item.label, item.plist.path])
             }.value
             status = ok ? "\(item.label) eliminado: su archivo está en la Papelera." : "No se pudo eliminar \(item.label)."

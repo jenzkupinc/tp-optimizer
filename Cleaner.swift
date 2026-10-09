@@ -19,23 +19,24 @@ final class Cleaner: ObservableObject {
 
     var selectedSize: Int64 { items.filter(\.selected).reduce(0) { $0 + $1.size } }
 
-    func scan() {
+    func scan(note: String = "") {
         scanning = true
-        status = "Buscando basura…"
+        let lead = note.isEmpty ? "" : note + " "
+        status = lead + "Buscando basura…"
         let running = Set(NSWorkspace.shared.runningApplications.flatMap { [$0.bundleIdentifier, $0.localizedName].compactMap { $0?.lowercased() } })
         Task.detached {
             let found = Cleaner.find(running: running)
             await MainActor.run {
                 self.items = found.sorted { $0.size > $1.size }
                 self.scanning = false
-                self.status = found.isEmpty ? "No encontré basura." : "Encontré \(formatBytes(found.reduce(0) { $0 + $1.size })) que se puede limpiar."
+                self.status = lead + (found.isEmpty ? "No encontré basura." : "Encontré \(formatBytes(found.reduce(0) { $0 + $1.size })) que se puede limpiar.")
             }
         }
     }
 
     nonisolated static func find(running: Set<String>) -> [Junk] {
         let fm = FileManager.default
-        let home = URL(fileURLWithPath: NSHomeDirectory())
+        let home = URL(fileURLWithPath: homePath())
         var out: [Junk] = []
         let keep: Set<String> = ["ms-playwright", "ms-playwright-go", "com.apple.nsurlsessiond", "CloudKit"]
 
@@ -99,10 +100,13 @@ final class Cleaner: ObservableObject {
         let urls = items.filter(\.selected).flatMap(\.urls)
         guard !urls.isEmpty else { return }
         status = "Moviendo a la Papelera…"
+        let size = selectedSize
         let moved = await recycle(urls)
-        status = "Listo: \(plural(moved, "elemento", "elementos")) en la Papelera."
-        record("Limpieza: \(formatBytes(selectedSize)) a la Papelera")
-        scan()
+        let note = moved == urls.count
+            ? "Listo: \(plural(moved, "elemento", "elementos")) en la Papelera."
+            : "Pude mover \(moved) de \(urls.count) elementos. Lo demás sigue donde estaba."
+        record(moved == urls.count ? "Limpieza: \(formatBytes(size)) a la Papelera" : "Limpieza parcial: \(moved) de \(urls.count) elementos a la Papelera")
+        scan(note: note)
     }
 
     @Published var oldTrash: [URL] = []
@@ -113,7 +117,7 @@ final class Cleaner: ObservableObject {
         Task.detached {
             let keys: Set<URLResourceKey> = [.addedToDirectoryDateKey, .isDirectoryKey, .totalFileAllocatedSizeKey]
             let cutoff = Date().addingTimeInterval(-30 * 86400)
-            let all = try? FileManager.default.contentsOfDirectory(at: URL(fileURLWithPath: NSHomeDirectory() + "/.Trash"), includingPropertiesForKeys: Array(keys))
+            let all = try? FileManager.default.contentsOfDirectory(at: URL(fileURLWithPath: homePath() + "/.Trash"), includingPropertiesForKeys: Array(keys))
             let items = (all ?? []).filter { ((try? $0.resourceValues(forKeys: keys))?.addedToDirectoryDate ?? Date()) < cutoff }
             let size = items.reduce(Int64(0)) { t, u in
                 let v = try? u.resourceValues(forKeys: keys)
@@ -121,6 +125,12 @@ final class Cleaner: ObservableObject {
             }
             await MainActor.run { self.oldTrash = items; self.oldTrashSize = size; self.trashLocked = all == nil }
         }
+    }
+
+    func emptyTrashNow() {
+        if emptyTrash() { status = "Papelera vacía."; record("Vacié la Papelera") }
+        else { status = "No pude vaciar la Papelera: macOS no dio permiso a Finder." }
+        scanTrash()
     }
 
     func emptyOldTrash() {
@@ -182,10 +192,7 @@ struct CleanerView: View {
         .padding()
         .onAppear { c.scanTrash() }
         .confirmationDialog("Vaciar la Papelera borra para siempre lo que tenga dentro.", isPresented: $confirmTrash) {
-            Button("Vaciar", role: .destructive) {
-                if emptyTrash() { record("Vacié la Papelera") } else { c.status = "No pude vaciar la Papelera: macOS no dio permiso a Finder." }
-                c.scanTrash()
-            }
+            Button("Vaciar", role: .destructive) { c.emptyTrashNow() }
         }
         .confirmationDialog("¿Borrar para siempre \(c.oldTrash.count) elementos (\(formatBytes(c.oldTrashSize))) que llevan más de 30 días en la Papelera? No se puede deshacer.", isPresented: $confirmOld) {
             Button("Borrar para siempre", role: .destructive) { c.emptyOldTrash() }

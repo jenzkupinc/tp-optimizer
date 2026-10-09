@@ -286,7 +286,7 @@ struct NetworkPane: View {
                 TextField("Dominio, por ejemplo tiktok.com", text: $domain).textFieldStyle(.roundedBorder).frame(maxWidth: 320)
                     .onSubmit { n.block([domain, "www." + domain]); domain = "" }
                 Button("Bloquear") { n.block([domain, "www." + domain]); domain = "" }.buttonStyle(PrimaryButton())
-                    .disabled(domain.isEmpty).help("Bloquea el dominio y su versión con www. Te pide tu contraseña")
+                    .disabled(domain.isEmpty).help("Bloquea el dominio y su versión con www. Usa el ayudante de administrador: no pide contraseña si ya está activado")
                 Spacer()
                 Button("Bloquear publicidad y rastreadores") { n.block(Hosts.trackers) }
                     .help("Agrega \(Hosts.trackers.count) dominios de anuncios y rastreo conocidos. Algunos anuncios de Google dejarán de abrir")

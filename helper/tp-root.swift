@@ -1,6 +1,6 @@
 import Foundation
 
-let helperVersion = "16"
+let helperVersion = "17"
 let firewallTool = "/usr/libexec/ApplicationFirewall/socketfilterfw"
 let launchctl = "/bin/launchctl"
 let tcpdumpTool = "/usr/sbin/tcpdump"
@@ -18,6 +18,7 @@ let daemonsDir = env["TP_T_DAEMONS"] ?? "", agentsDir = env["TP_T_AGENTS"] ?? ""
 let hostsPath = env["TP_T_HOSTS"] ?? "", logPath = env["TP_T_AUDIT"] ?? "", callLog = env["TP_T_CALLS"] ?? ""
 let installedHelper = (env["TP_T_HELPERDIR"] ?? "") + "/app.tpoptimizer.root"
 let qosRulesFile = env["TP_T_QOSFILE"] ?? ""
+let appsDir = env["TP_T_APPS"] ?? ""
 
 @discardableResult
 func run(_ tool: String, _ args: [String]) -> Int32 {
@@ -44,6 +45,7 @@ let daemonsDir = "/Library/LaunchDaemons", agentsDir = "/Library/LaunchAgents"
 let hostsPath = "/private/etc/hosts", logPath = "/var/log/tp-optimizer-root.log"
 let installedHelper = "/Library/PrivilegedHelperTools/app.tpoptimizer.root"
 let qosRulesFile = "/private/var/tmp/tp-optimizer-qos.rules"
+let appsDir = "/Applications"
 
 @discardableResult
 func run(_ tool: String, _ args: [String]) -> Int32 {
@@ -394,8 +396,27 @@ func toTrash(_ path: String, uid: UInt32) -> Bool {
         dest = trash + "/" + stem + " \(n)." + ext
     }
     guard rename(path, dest) == 0 else { return false }
-    lchown(dest, uid, primaryGroup(uid))
+    chownTree(dest, uid: uid)
     return true
+}
+
+func chownTree(_ path: String, uid: UInt32) {
+    let gid = primaryGroup(uid)
+    lchown(path, uid, gid)
+    guard let e = FileManager.default.enumerator(atPath: path) else { return }
+    for case let rel as String in e { lchown(path + "/" + rel, uid, gid) }
+}
+
+func uninstall(_ a: [String]) -> Bool {
+    guard a.count == 1, let uid = sudoUID, uid != 0 else { return false }
+    let p = a[0]
+    guard !appsDir.isEmpty, p.hasPrefix(appsDir + "/"), p.hasSuffix(".app"), p.count < 1024, !p.dropFirst(appsDir.count + 1).contains("/"),
+          !p.unicodeScalars.contains(where: { $0.value < 32 }) else { return false }
+    var st = stat()
+    guard lstat(p, &st) == 0, (st.st_mode & S_IFMT) == S_IFDIR else { return false }
+    let id = (NSDictionary(contentsOfFile: p + "/Contents/Info.plist")?["CFBundleIdentifier"] as? String) ?? ""
+    guard !id.isEmpty, !id.hasPrefix("com.apple.") else { return false }
+    return toTrash(p, uid: uid)
 }
 
 func launch(_ a: [String]) -> Bool {
@@ -440,6 +461,7 @@ case "schedule": ok = schedule(rest)
 case "hosts": ok = setHosts(rest)
 case "fw": ok = firewall(rest)
 case "launch": ok = launch(rest)
+case "uninstall": ok = uninstall(rest)
 case "awdl": ok = awdl(rest)
 case "qos": ok = qos(rest)
 case "reroll": ok = reroll(rest)

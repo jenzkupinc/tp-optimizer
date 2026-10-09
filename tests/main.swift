@@ -1,12 +1,6 @@
 import Foundation
 import SwiftUI
 
-var failures = 0
-func check(_ ok: Bool, _ what: String, _ detail: String = "") {
-    print((ok ? "PASS " : "FAIL ") + what + (detail.isEmpty ? "" : "  [\(detail)]"))
-    if !ok { failures += 1 }
-}
-
 func peer(_ id: String, _ name: String) -> Peer { Peer(id: id, name: name, mac: "aa:bb:cc:dd:ee:" + id.suffix(2)) }
 
 let ipad = peer("192.168.2.3", "iPad de Ana"), iphone = peer("192.168.2.4", "iPhone"), watch = peer("192.168.2.5", "Watch")
@@ -73,6 +67,9 @@ check(Boost.summaryText(before: nil, after: nil, trashed: 5_000_000, emptied: fa
 
 check(Item.protectedNames.contains("Claude") && Item.protectedNames.contains("claude"), "Claude no recibe respiro")
 check(!formatBytes(1_500_000).isEmpty && plural(1, "app", "apps") == "1 app" && plural(3, "app", "apps") == "3 apps", "formatos básicos de bytes y plurales")
+
+await screenTests()
+await privateTests()
 
 print("\n" + (failures == 0 ? "TODO OK" : "FALLAS: \(failures)"))
 exit(failures == 0 ? 0 : 1)

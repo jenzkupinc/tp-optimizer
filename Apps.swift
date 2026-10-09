@@ -27,19 +27,19 @@ final class AppsModel: ObservableObject {
         }
     }
 
-    nonisolated static func find() -> [InstalledApp] {
+    nonisolated static func find(dirs: [String]? = nil) -> [InstalledApp] {
         let fm = FileManager.default
-        let lib = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library")
+        let lib = URL(fileURLWithPath: homePath()).appendingPathComponent("Library")
         let places = ["Application Support", "Caches", "Containers", "Group Containers", "Preferences", "Saved Application State", "Logs", "HTTPStorages", "WebKit", "Application Scripts", "LaunchAgents"]
         var out: [InstalledApp] = []
-        for dir in ["/Applications", NSHomeDirectory() + "/Applications"] {
+        for dir in dirs ?? ["/Applications", homePath() + "/Applications"] {
             for url in (try? fm.contentsOfDirectory(at: URL(fileURLWithPath: dir), includingPropertiesForKeys: nil)) ?? [] where url.pathExtension == "app" {
                 guard let b = Bundle(url: url), let id = b.bundleIdentifier, !id.hasPrefix("com.apple.") else { continue }
                 let name = (b.infoDictionary?["CFBundleName"] as? String) ?? url.deletingPathExtension().lastPathComponent
                 var left: [URL] = []
                 for place in places {
                     let base = lib.appendingPathComponent(place)
-                    for entry in (try? fm.contentsOfDirectory(atPath: base.path)) ?? [] where entry.hasPrefix(id) || entry == name {
+                    for entry in (try? fm.contentsOfDirectory(atPath: base.path)) ?? [] where entry == id || entry.hasPrefix(id + ".") || entry == name {
                         left.append(base.appendingPathComponent(entry))
                     }
                 }
@@ -51,7 +51,18 @@ final class AppsModel: ObservableObject {
         return out.sorted { $0.size + $0.leftoverSize > $1.size + $1.leftoverSize }
     }
 
+    nonisolated static let protectedIDs: Set<String> = ["com.anthropic.claudefordesktop"]
+    nonisolated static func isProtected(_ id: String) -> Bool { protectedIDs.contains(id) || id == Bundle.main.bundleIdentifier }
+
+    nonisolated static func trashable(_ url: URL) -> Bool {
+        #if TESTING
+        if let h = Hooks.deletable { return h(url.path) }
+        #endif
+        return FileManager.default.isDeletableFile(atPath: url.path)
+    }
+
     func uninstall(_ app: InstalledApp) async {
+        guard !AppsModel.isProtected(app.bundleID) else { status = "\(app.name) no se desinstala desde aquí: es la app que corre esta sesión."; return }
         if let running = NSRunningApplication.runningApplications(withBundleIdentifier: app.bundleID).first {
             running.terminate()
             try? await Task.sleep(for: .seconds(2))
@@ -60,7 +71,14 @@ final class AppsModel: ObservableObject {
             shell("launchctl bootout gui/\(getuid()) \(q(agent.path)) 2>/dev/null")
         }
         let all = 1 + app.leftovers.count
-        let moved = await recycle([app.id] + app.leftovers)
+        var moved: Int
+        if AppsModel.trashable(app.id) {
+            moved = await recycle([app.id] + app.leftovers)
+        } else {
+            let path = app.id.path
+            let appOK = await Task.detached { Root.run(["uninstall", path]) }.value
+            moved = (appOK ? 1 : 0) + (await recycle(app.leftovers))
+        }
         let gone = !FileManager.default.fileExists(atPath: app.id.path)
         status = gone
             ? (moved == all ? "\(app.name) desinstalada: \(moved) elementos en la Papelera." : "\(app.name) desinstalada, pero solo pude mover \(moved) de \(all) elementos: quedan restos.")
