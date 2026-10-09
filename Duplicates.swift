@@ -16,6 +16,7 @@ struct DupGroup: Identifiable {
     let id = UUID()
     var files: [DupFile]
     var waste: Int64 { files.first.map { $0.size * Int64(files.count - 1) } ?? 0 }
+    var keepsOne: Bool { files.contains { !$0.selected } }
 }
 
 enum FileKind: String, CaseIterable {
@@ -41,6 +42,8 @@ final class Duplicates: ObservableObject {
     @Published var status = ""
 
     var selectedSize: Int64 { groups.flatMap(\.files).filter(\.selected).reduce(0) { $0 + $1.size } }
+    var selectedCount: Int { groups.flatMap(\.files).filter(\.selected).count }
+    var everyGroupKeepsOne: Bool { groups.allSatisfy(\.keepsOne) }
 
     func addFolder() {
         let p = NSOpenPanel()
@@ -117,11 +120,14 @@ final class Duplicates: ObservableObject {
     }
 
     func removeSelected() async {
+        guard everyGroupKeepsOne else { status = "Hay un grupo con todas sus copias marcadas: desmarca una para no perder el archivo."; return }
         let urls = groups.flatMap(\.files).filter(\.selected).map(\.url)
         guard !urls.isEmpty else { return }
         let moved = await recycle(urls)
-        status = "\(plural(moved, "duplicado", "duplicados")) en la Papelera."
-        record("Mandé \(plural(moved, "duplicado", "duplicados")) a la Papelera")
+        status = moved == urls.count
+            ? "\(plural(moved, "duplicado", "duplicados")) en la Papelera."
+            : "Pude mover \(moved) de \(urls.count). Los demás siguen donde estaban."
+        record("Mandé \(plural(moved, "duplicado", "duplicados")) a la Papelera (de \(urls.count) marcados)")
         groups = groups.compactMap { g in
             let rest = g.files.filter { !urls.contains($0.url) }
             return rest.count > 1 ? DupGroup(files: rest) : nil
@@ -148,6 +154,7 @@ struct Thumb: View {
 
 struct DuplicatesView: View {
     @ObservedObject var d: Duplicates
+    @State private var confirmMove = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -206,11 +213,15 @@ struct DuplicatesView: View {
                 HStack {
                     Text("Seleccionado: \(formatBytes(d.selectedSize))").fontWeight(.medium)
                     Spacer()
-                    Button("Mover copias a la Papelera") { Task { await d.removeSelected() } }
-                        .buttonStyle(PrimaryButton()).disabled(d.selectedSize == 0).help("Mueve las copias marcadas a la Papelera. Siempre queda al menos una")
+                    Button("Mover copias a la Papelera") { confirmMove = true }
+                        .buttonStyle(PrimaryButton()).disabled(d.selectedSize == 0 || !d.everyGroupKeepsOne)
+                        .help(d.everyGroupKeepsOne ? "Mueve las copias marcadas a la Papelera. En cada grupo queda al menos una" : "Un grupo tiene todas sus copias marcadas: desmarca una")
                 }
             }
         }
         .padding()
+        .confirmationDialog("¿Mover \(d.selectedCount) copias (\(formatBytes(d.selectedSize))) a la Papelera?", isPresented: $confirmMove) {
+            Button("Mover a la Papelera") { Task { await d.removeSelected() } }
+        } message: { Text("Podrás recuperarlas desde la Papelera. En cada grupo se queda al menos una copia.") }
     }
 }

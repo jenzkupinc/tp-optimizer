@@ -35,7 +35,9 @@ final class Boost: ObservableObject {
     private(set) var stopped: Date?
     var running: Bool { phase != .idle && phase != .done }
 
-    var summary: String {
+    var summary: String { Boost.summaryText(before: before, after: after, trashed: trashed, emptied: emptied, relieved: relieved, admin: admin) }
+
+    nonisolated static func summaryText(before: Vitals?, after: Vitals?, trashed: Int64, emptied: Bool?, relieved: [String], admin: Bool?) -> String {
         var parts: [String] = []
         if trashed > 0 { parts.append("\(formatBytes(trashed)) \(emptied == true ? "liberados" : "esperan en la Papelera").") }
         if !relieved.isEmpty { parts.append("Respiro para \(plural(relieved.count, "app", "apps")) de fondo.") }

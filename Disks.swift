@@ -74,8 +74,12 @@ final class BackupModel: ObservableObject {
 
     func run() async {
         guard FileManager.default.fileExists(atPath: SSDWatch.path) else {
-            status = "El SSD no está conectado: no se hizo el respaldo."
-            TelegramBot.shared.alert("No se hizo el respaldo nocturno: el SSD no está conectado.")
+            status = "El SSD no está conectado: no se hizo el respaldo. Se reintenta cada minuto hasta que vuelva."
+            let day = Calendar.current.ordinality(of: .day, in: .era, for: Date()) ?? 0
+            if UserDefaults.standard.integer(forKey: "backupAlertDay") != day {
+                UserDefaults.standard.set(day, forKey: "backupAlertDay")
+                TelegramBot.shared.alert("No se hizo el respaldo nocturno: el SSD no está conectado. Se reintenta cada minuto y este aviso no se repite hoy.")
+            }
             return
         }
         running = true

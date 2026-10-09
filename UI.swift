@@ -34,15 +34,14 @@ struct Brand: View {
 
 enum Pane: String, CaseIterable, Identifiable {
     case boost = "Boost", game = "Modo juego", monitor = "Monitor", security = "Seguridad", journal = "Registro"
-    case clean = "Limpieza profunda", big = "Archivos grandes", dups = "Duplicados", disks = "Discos y respaldo"
+    case clean = "Espacio"
     case profiles = "Perfiles", power = "Energía", network = "Red y router", startup = "Arranque automático", apps = "Desinstalar apps"
     case automation = "Scripts y Telegram"
     var id: String { rawValue }
     static let groups: [(String, [Pane])] = [
         ("Estado", [.boost, .monitor, .security, .journal]),
         ("Gaming", [.game]),
-        ("Espacio", [.clean, .big, .dups, .disks]),
-        ("Control", [.profiles, .power, .network, .startup, .apps]),
+        ("Control", [.clean, .profiles, .power, .network, .startup, .apps]),
         ("Automatización", [.automation]),
     ]
     var tip: String {
@@ -52,10 +51,7 @@ enum Pane: String, CaseIterable, Identifiable {
         case .monitor: "Qué está usando tu Mac ahora: apps, procesos, RAM, CPU y temperatura"
         case .security: "Protecciones de macOS, programas sin firma, instalaciones nuevas y accesos a tu Mac"
         case .journal: "Todo lo que hizo TP Optimizer, las apps que se cayeron y el registro de macOS en vivo"
-        case .clean: "Cachés, logs viejos e instaladores que se pueden borrar sin perder nada tuyo"
-        case .big: "Lo que más pesa y hace tiempo no abres, con opción de mandarlo al SSD"
-        case .dups: "Archivos repetidos, comparados por su contenido real"
-        case .disks: "Salud de los discos y respaldo nocturno al SSD"
+        case .clean: "Limpieza, archivos grandes, duplicados y respaldo: lo que ocupa lugar en tus discos"
         case .profiles: "Un clic duerme las apps que no necesitas para trabajar o para ver una película"
         case .power: "Horario de encendido y reinicio, y qué no deja dormir a la Mac"
         case .network: "Tu router, los equipos conectados, sitios bloqueados y el firewall"
@@ -71,10 +67,7 @@ enum Pane: String, CaseIterable, Identifiable {
         case .monitor: "gauge.with.dots.needle.67percent"
         case .security: "lock.shield"
         case .journal: "list.bullet.rectangle"
-        case .clean: "sparkles"
-        case .big: "externaldrive.badge.questionmark"
-        case .dups: "doc.on.doc"
-        case .disks: "internaldrive"
+        case .clean: "internaldrive"
         case .profiles: "square.stack.3d.up"
         case .power: "powersleep"
         case .network: "wifi.router"
@@ -127,24 +120,6 @@ struct Header: View {
             Text(subtitle).font(.callout).foregroundStyle(.secondary).tracking(-0.1).lineLimit(2)
         }
         .padding(.bottom, 2)
-    }
-}
-
-struct StatCard: View {
-    let title: String, value: String, symbol: String
-    var tip = ""
-    var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: symbol).font(.title2).foregroundStyle(Color.brandTeal).frame(width: 28)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(title).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                Text(value).font(.title3.bold().monospacedDigit()).lineLimit(1).minimumScaleFactor(0.7)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(12)
-        .card(12)
-        .help(tip)
     }
 }
 
@@ -207,10 +182,7 @@ struct RootView: View {
             case .monitor: MonitorView(m: hub.monitor, watch: hub.watch, ssd: hub.ssd, night: hub.night, cleaner: hub.cleaner)
             case .security: SecurityPane(installs: hub.installs)
             case .journal: JournalPane()
-            case .clean: CleanerView(c: hub.cleaner)
-            case .big: BigFilesView(b: big)
-            case .dups: DuplicatesView(d: dups)
-            case .disks: DisksPane(backup: hub.backup)
+            case .clean: SpacePane(cleaner: hub.cleaner, big: big, dups: dups, backup: hub.backup)
             case .profiles: ProfilesView(p: profiles, m: hub.monitor)
             case .power: PowerPane()
             case .network: NetworkPane()
@@ -284,5 +256,34 @@ private struct PrimaryButtonBody: View {
             .onHover { if enabled { hover = $0 } }
             .animation(.spring(response: 0.28, dampingFraction: 0.7), value: hover)
             .animation(.spring(response: 0.28, dampingFraction: 0.7), value: configuration.isPressed)
+    }
+}
+
+enum SpaceTab: String, CaseIterable, Identifiable {
+    case clean = "Limpieza", big = "Archivos grandes", dups = "Duplicados", disks = "Discos y respaldo"
+    var id: String { rawValue }
+}
+
+struct SpacePane: View {
+    let cleaner: Cleaner
+    @ObservedObject var big: BigFiles
+    @ObservedObject var dups: Duplicates
+    let backup: BackupModel
+    @AppStorage("spaceTab") private var tab = SpaceTab.clean.rawValue
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Picker("", selection: $tab) {
+                ForEach(SpaceTab.allCases) { Text($0.rawValue).tag($0.rawValue) }
+            }
+            .pickerStyle(.segmented).labelsHidden().frame(maxWidth: 560)
+            .padding([.top, .horizontal])
+            switch SpaceTab(rawValue: tab) ?? .clean {
+            case .clean: CleanerView(c: cleaner)
+            case .big: BigFilesView(b: big)
+            case .dups: DuplicatesView(d: dups)
+            case .disks: DisksPane(backup: backup)
+            }
+        }
     }
 }

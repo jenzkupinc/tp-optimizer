@@ -182,7 +182,10 @@ struct CleanerView: View {
         .padding()
         .onAppear { c.scanTrash() }
         .confirmationDialog("Vaciar la Papelera borra para siempre lo que tenga dentro.", isPresented: $confirmTrash) {
-            Button("Vaciar", role: .destructive) { emptyTrash(); record("Vacié la Papelera"); c.scanTrash() }
+            Button("Vaciar", role: .destructive) {
+                if emptyTrash() { record("Vacié la Papelera") } else { c.status = "No pude vaciar la Papelera: macOS no dio permiso a Finder." }
+                c.scanTrash()
+            }
         }
         .confirmationDialog("¿Borrar para siempre \(c.oldTrash.count) elementos (\(formatBytes(c.oldTrashSize))) que llevan más de 30 días en la Papelera? No se puede deshacer.", isPresented: $confirmOld) {
             Button("Borrar para siempre", role: .destructive) { c.emptyOldTrash() }

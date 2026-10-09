@@ -326,14 +326,13 @@ struct GameIdeasCard: View {
                     ("iPad por cable", "Un adaptador USB-C a Ethernet quita el salto Wi-Fi, que es donde el iPad ahorra energía y mete picos. Apple lista los adaptadores USB-Ethernet entre lo que acepta el iPad. Falta probar aquí que Compartir Internet reparta por un segundo puerto Ethernet.", ("Apple: dispositivos USB del iPad", "https://support.apple.com/en-us/108894")),
                 ])
                 section("En el iPad, una sola vez", [
-                    ("Sin AirDrop, Handoff ni AirPlay en la partida", "Son los que hacen saltar la radio de canal (AWDL). La app ya lo apaga en la Mac; en el iPad lo haces tú.", ("USENIX Security 2019: AWDL", "https://www.usenix.org/system/files/sec19-stute.pdf")),
+                    ("Sin AirDrop, Handoff ni AirPlay en la partida", "Según la literatura hacen saltar la radio de canal (AWDL). En nuestras pruebas de este Mac apagarla no quitó los tirones del Wi-Fi: compruébalo en el Laboratorio de la pestaña Red.", ("USENIX Security 2019: AWDL", "https://www.usenix.org/system/files/sec19-stute.pdf")),
                     ("iPad fresco", "Sin funda y con soporte. Con calor el iPad baja su rendimiento.", ("Apple: temperaturas del iPad", "https://support.apple.com/en-us/HT201678")),
                     ("Dirección Wi-Fi privada", "Apple dice que puede cambiar. Si cambia, esta app ve un equipo nuevo y te avisa.", ("Apple: dirección Wi-Fi privada", "https://support.apple.com/en-us/102509")),
                 ])
                 section("Lo que buscamos y no sirve", [
                     ("Modo de bajo consumo, datos bajos, Retransmisión privada", "Apple no documenta efecto en la latencia de juego.", nil),
                     ("Modo juego de Apple", "Prioriza CPU, GPU y Bluetooth. No menciona el Wi-Fi.", ("Apple: Modo juego", "https://support.apple.com/en-us/105118")),
-                    ("Priorizar el juego por IP desde la Mac", "Con WireGuard la Mac solo ve UDP hacia tu VM: las IP del juego van dentro del túnel y no se pueden clasificar. Además pf no puede marcar DSCP en macOS. Esa prioridad vive en la VM (pubg_prio con DSCP EF); la pestaña Túnel mide cuánto tráfico cubre.", nil),
                     ("Tocar las colas de la Mac o el ancho de canal", "Sin evidencia de mejora. dnctl solo trae colas con pesos, sin CoDel, y la Mac ya usa FQ_CODEL en sus interfaces; se vio con netstat -qq.", nil),
                     ("Abrir puertos para PUBG Mobile", "El juego sale como cliente. Las listas de puertos que circulan vienen de un foro sin verificar.", nil),
                     ("Aceleradores tipo ExitLag", "No hallamos un estudio independiente. El FEC cambia ancho de banda por menos pérdida, no baja el ping base.", nil),
@@ -503,7 +502,7 @@ enum GameChecks {
         if awdlHeld {
             out.append(GameCheck(id: "awdl", level: .good, title: "AWDL apagada", detail: "La radio de la Mac no salta de canal por AirDrop, Handoff ni AirPlay. Vuelve sola al terminar."))
         } else if awdlActive && rhythmic {
-            out.append(GameCheck(id: "awdl", level: .warn, title: "AWDL activa y los saltos son regulares", detail: "Apágala con «Apagar AirDrop y Handoff» en Tweaks."))
+            out.append(GameCheck(id: "awdl", level: .info, title: "AWDL activa y los saltos son regulares", detail: "Puede ser AirDrop u otra cosa: el 2 de octubre apagarla no quitó los tirones en este Mac. Compruébalo en el Laboratorio de la pestaña Red."))
         } else {
             out.append(GameCheck(id: "awdl", level: .info, title: "AWDL activa", detail: "Es la interfaz que usan AirDrop, Handoff y AirPlay. Sin saltos periódicos hasta ahora. Pruébala apagada en el Laboratorio de la pestaña Red."))
         }
@@ -565,7 +564,7 @@ enum GameProfile: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var about: String {
         switch self {
-        case .competitive: "Todo encendido: prioridad total al iPad. Lo mantiene despierto, apaga AirDrop, limita a los demás equipos, duerme las apps de red de la Mac y pausa Time Machine."
+        case .competitive: "Prioridad total al iPad: lo mantiene despierto, limita a los demás equipos, duerme las apps de red de la Mac y pausa Time Machine. AirDrop y Handoff quedan como están."
         case .balanced: "Mantiene despierto al iPad y baja la prioridad de lo pesado. AirDrop, los demás equipos y las apps de red quedan como están."
         case .saver: "No toca nada. Solo mide lo que pase."
         }
@@ -575,7 +574,7 @@ enum GameProfile: String, CaseIterable, Identifiable {
 extension GameLink {
     var profile: GameProfile? {
         let all = [keepAwake, awdlDuringGame, autoServer, exclusive, autoSilence, lowerPriority, pauseBackup]
-        if all.allSatisfy({ $0 }) { return .competitive }
+        if keepAwake && !awdlDuringGame && autoServer && exclusive && autoSilence && lowerPriority && pauseBackup { return .competitive }
         if keepAwake && !awdlDuringGame && autoServer && !exclusive && !autoSilence && lowerPriority && pauseBackup { return .balanced }
         if all.allSatisfy({ !$0 }) { return .saver }
         return nil
@@ -583,7 +582,7 @@ extension GameLink {
 
     func apply(_ p: GameProfile) {
         switch p {
-        case .competitive: keepAwake = true; awdlDuringGame = true; autoServer = true; exclusive = true; autoSilence = true; lowerPriority = true; pauseBackup = true
+        case .competitive: keepAwake = true; awdlDuringGame = false; autoServer = true; exclusive = true; autoSilence = true; lowerPriority = true; pauseBackup = true
         case .balanced: keepAwake = true; awdlDuringGame = false; autoServer = true; exclusive = false; autoSilence = false; lowerPriority = true; pauseBackup = true
         case .saver: keepAwake = false; awdlDuringGame = false; autoServer = false; exclusive = false; autoSilence = false; lowerPriority = false; pauseBackup = false
         }

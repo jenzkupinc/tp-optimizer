@@ -136,6 +136,8 @@ final class NetworkModel: ObservableObject {
         Task {
             if await Task.detached(operation: { Root.run(["fw", "stealth", on ? "on" : "off"]) }).value {
                 record("Modo invisible del firewall \(on ? "encendido" : "apagado")")
+            } else {
+                status = "No pude cambiar el modo invisible del firewall: el ayudante no recibió permiso."
             }
             await refresh()
         }
@@ -145,6 +147,8 @@ final class NetworkModel: ObservableObject {
         Task {
             if await Task.detached(operation: { Root.run(["fw", block ? "block" : "unblock", app.path]) }).value {
                 record("Firewall: \(block ? "bloqueé" : "permití") conexiones entrantes a \(app.name)", undo: block ? .unblockApp(app.path) : nil)
+            } else {
+                status = "No pude cambiar el firewall para \(app.name): el ayudante no recibió permiso."
             }
             await refresh()
         }
@@ -158,6 +162,8 @@ final class NetworkModel: ObservableObject {
         Task {
             if await Task.detached(operation: { Root.run(["fw", "add", url.path]) }).value {
                 record("Firewall: bloqueé conexiones entrantes a \(url.deletingPathExtension().lastPathComponent)", undo: .unblockApp(url.path))
+            } else {
+                status = "No pude agregar \(url.deletingPathExtension().lastPathComponent) al firewall: el ayudante no recibió permiso."
             }
             await refresh()
         }

@@ -55,7 +55,7 @@ Un toque barre cachés viejas, le baja la prioridad a lo pesado que está en seg
 Pensado para quien juega desde un iPad conectado a **Compartir Internet** de su Mac.
 
 - 🟢 **Mide por tramos:** iPad ↔ Mac (Wi-Fi), Mac ↔ router y Mac ↔ internet, cada uno por separado, para saber dónde está el problema.
-- 🟡 **Prepara la sesión:** baja la prioridad de lo pesado, duerme apps de red, pausa Time Machine, apaga AirDrop y limita a los demás equipos.
+- 🟡 **Prepara la sesión:** baja la prioridad de lo pesado, duerme apps de red, pausa Time Machine y limita a los demás equipos. AirDrop lo apagas tú si quieres: en nuestras pruebas no quitó los tirones del Wi-Fi.
 - 🔴 **Te dice la verdad:** «Arreglar ahora» mide los saltos antes y después. Si no mejoraron, lo dice.
 
 Al terminar, todo vuelve a como estaba.
@@ -66,8 +66,7 @@ Al terminar, todo vuelve a como estaba.
 |---|---|
 | **Monitor** | Procesos, memoria, CPU y quién usa la red |
 | **Seguridad** | Firewall, cifrado de disco, SIP, Gatekeeper y accesos remotos |
-| **Limpieza profunda · Archivos grandes · Duplicados** | Los encuentra y los envía a la Papelera |
-| **Discos y respaldo** | Respaldo a un disco externo |
+| **Espacio** | Limpieza profunda, archivos grandes, duplicados y respaldo a un disco externo. Lo que se borra pasa por la Papelera |
 | **Perfiles · Energía** | Qué apps duermen y qué impide que la Mac descanse |
 | **Red y router** | Tu router, los equipos conectados, sitios bloqueados y el firewall |
 | **Arranque automático · Desinstalar apps** | Lo que se abre solo y lo que dejan las apps |
@@ -106,6 +105,7 @@ Versión **1.0.0**. Probada a mano en un Mac mini con macOS 26: **Boost, Boost p
 ```
 *.swift      interfaz y lógica de cada sección
 helper/      ayudante con privilegios (tp-root.swift)
+tests/       pruebas de la lógica: bash tests/run.sh
 Resources/   icono y logo
 build.sh     compila, firma e instala
 ```

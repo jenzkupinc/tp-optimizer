@@ -59,10 +59,13 @@ final class AppsModel: ObservableObject {
         for agent in app.leftovers where agent.deletingLastPathComponent().lastPathComponent == "LaunchAgents" {
             shell("launchctl bootout gui/\(getuid()) \(q(agent.path)) 2>/dev/null")
         }
+        let all = 1 + app.leftovers.count
         let moved = await recycle([app.id] + app.leftovers)
-        status = moved > 0 ? "\(app.name) desinstalada: \(moved) elementos en la Papelera." : "No pude mover \(app.name). Puede que macOS pida permiso."
-        apps.removeAll { $0.id == app.id && moved > 0 }
-        if moved > 0 { record("Desinstalé \(app.name)") }
+        let gone = !FileManager.default.fileExists(atPath: app.id.path)
+        status = gone
+            ? (moved == all ? "\(app.name) desinstalada: \(moved) elementos en la Papelera." : "\(app.name) desinstalada, pero solo pude mover \(moved) de \(all) elementos: quedan restos.")
+            : "No pude mover \(app.name) a la Papelera. Puede que macOS pida permiso."
+        if gone { apps.removeAll { $0.id == app.id }; record("Desinstalé \(app.name) (\(moved) de \(all) elementos)") }
     }
 }
 

@@ -17,7 +17,6 @@ struct LaunchItem: Identifiable {
     var domain: String { system ? "system" : "gui/\(getuid())" }
     var inHome: Bool { plist.path.hasPrefix(NSHomeDirectory()) }
     var place: String { system ? "Servicio del sistema" : inHome ? "Tu usuario" : "Todos los usuarios" }
-    var program: String { args.first.map { ($0 as NSString).lastPathComponent } ?? "?" }
     var purpose: String {
         if let known = LaunchItem.known[label] { return known }
         return LaunchItem.byVendor.first { label.hasPrefix($0.0) }?.1 ?? "Sin descripción: revisa el comando de abajo"
@@ -87,7 +86,7 @@ final class StartupModel: ObservableObject {
     }
 
     nonisolated static func wake(domain: String, label: String, plist: String, system: Bool) -> Bool {
-        system ? Root.run(["launch", "wake", label, plist]) : shellStatus("launchctl enable \(domain)/\(label); launchctl bootstrap \(domain) \(q(plist)) 2>/dev/null; true") == 0
+        system ? Root.run(["launch", "wake", label, plist]) : shellStatus("launchctl enable \(q(domain + "/" + label)); launchctl bootstrap \(domain) \(q(plist)) 2>/dev/null; launchctl print \(q(domain + "/" + label)) >/dev/null 2>&1") == 0
     }
 
     func setAsleep(_ item: LaunchItem, _ sleep: Bool) {
@@ -95,7 +94,7 @@ final class StartupModel: ObservableObject {
             let ok = await Task.detached { () -> Bool in
                 let target = "\(item.domain)/\(item.label)"
                 if !sleep { return StartupModel.wake(domain: item.domain, label: item.label, plist: item.plist.path, system: item.system) }
-                return item.system ? Root.run(["launch", "sleep", item.label]) : shellStatus("launchctl bootout \(target) 2>/dev/null; launchctl disable \(target)") == 0
+                return item.system ? Root.run(["launch", "sleep", item.label]) : shellStatus("launchctl bootout \(q(target)) 2>/dev/null; launchctl disable \(q(target))") == 0
             }.value
             status = ok ? "\(item.purpose) \(sleep ? "dormido: no arranca hasta que lo despiertes" : "despierto")." : "No se pudo cambiar \(item.label)."
             if ok { record("\(sleep ? "Dormí" : "Desperté") el arranque de \(item.purpose) (\(item.label))", undo: sleep ? .wakeStartup(domain: item.domain, label: item.label, plist: item.plist.path, system: item.system) : nil) }
@@ -126,11 +125,11 @@ final class StartupModel: ObservableObject {
         if item.readable, item.inHome { try? FileManager.default.copyItem(at: item.plist, to: URL(fileURLWithPath: StartupModel.backupDir + "/" + item.plist.lastPathComponent)) }
         Task {
             let ok = await Task.detached { () -> Bool in
-                if item.inHome { return shellStatus("launchctl bootout \(item.domain)/\(item.label) 2>/dev/null; mv \(q(item.plist.path)) \(q(NSHomeDirectory() + "/.Trash/"))") == 0 }
+                if item.inHome { return shellStatus("launchctl bootout \(q(item.domain + "/" + item.label)) 2>/dev/null; mv \(q(item.plist.path)) \(q(NSHomeDirectory() + "/.Trash/"))") == 0 }
                 return Root.run(["launch", "remove", item.label, item.plist.path])
             }.value
             status = ok ? "\(item.label) eliminado: su archivo está en la Papelera." : "No se pudo eliminar \(item.label)."
-            if ok { record("Eliminé el arranque \(item.label). Su respaldo está en Arranque automático → Eliminados") }
+            if ok { record("Eliminé el arranque \(item.label). " + (item.inHome && item.readable ? "Su respaldo está en Arranque automático → Eliminados" : "Sin respaldo: era un archivo del sistema.")) }
             refresh()
         }
     }
