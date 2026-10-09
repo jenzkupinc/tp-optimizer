@@ -1,6 +1,6 @@
 import Foundation
 
-let helperVersion = "15"
+let helperVersion = "16"
 let firewallTool = "/usr/libexec/ApplicationFirewall/socketfilterfw"
 let launchctl = "/bin/launchctl"
 let tcpdumpTool = "/usr/sbin/tcpdump"
@@ -162,7 +162,16 @@ func appPath(_ p: String, needsDisk: Bool) -> String? {
     var isDir: ObjCBool = false
     if FileManager.default.fileExists(atPath: p, isDirectory: &isDir), isDir.boolValue ? p.hasSuffix(".app") : FileManager.default.isExecutableFile(atPath: p) { return p }
     if needsDisk { return nil }
-    return capture(firewallTool, ["--listapps"]).contains(p) ? p : nil
+    return firewallLists(p) ? p : nil
+}
+
+func firewallLists(_ p: String) -> Bool {
+    capture(firewallTool, ["--listapps"]).split(separator: "\n").contains { line in
+        let t = line.trimmingCharacters(in: .whitespaces)
+        if t == p { return true }
+        guard let r = t.range(of: #"^\d+ : "#, options: .regularExpression) else { return false }
+        return t[r.upperBound...].trimmingCharacters(in: .whitespaces) == p
+    }
 }
 
 func firewall(_ a: [String]) -> Bool {

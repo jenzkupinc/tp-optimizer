@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/jenzkupinc/tp-optimizer/releases/latest"><img alt="Descargar" src="https://img.shields.io/badge/⬇_Descargar-TP_Optimizer_1.0.0-f08a24?style=for-the-badge"></a>
+  <a href="https://github.com/jenzkupinc/tp-optimizer/releases/latest"><img alt="Descargar" src="https://img.shields.io/badge/⬇_Descargar-TP_Optimizer_1.1.0-f08a24?style=for-the-badge"></a>
   <img alt="macOS 26+" src="https://img.shields.io/badge/macOS-26%2B-0b3b4a?style=for-the-badge&logo=apple&logoColor=white">
   <img alt="Apple Silicon" src="https://img.shields.io/badge/Apple%20Silicon-sí-127c8c?style=for-the-badge">
   <img alt="Gratis" src="https://img.shields.io/badge/Precio-gratis-2ea44f?style=for-the-badge">
@@ -18,7 +18,7 @@
 
 ## ⬇️ Descárgala
 
-**[Bajar TP-Optimizer-1.0.0.dmg](https://github.com/jenzkupinc/tp-optimizer/releases/latest)** · 2,6 MB
+**[Bajar TP-Optimizer-1.1.0.dmg](https://github.com/jenzkupinc/tp-optimizer/releases/latest)** · 2,7 MB
 
 1. Abre el `.dmg` y **arrastra TP Optimizer a Aplicaciones**.
 2. La primera vez, **clic derecho sobre la app → Abrir → Abrir**. macOS lo pide porque la app no está notarizada por Apple (eso cuesta una cuenta de desarrollador de pago).
@@ -98,14 +98,14 @@ Necesitas macOS 26, Apple Silicon y las herramientas de línea de comandos de Xc
 
 ## ✅ Estado
 
-Versión **1.0.0**. Probada a mano en un Mac mini con macOS 26: **Boost, Boost profundo y Modo juego**. Las demás secciones compilan y abren, pero no tienen pruebas manuales completas. Si algo falla, abre un [*issue*](https://github.com/jenzkupinc/tp-optimizer/issues) con el texto del error y tu versión de macOS.
+Versión **1.1.0**. Probada a mano en un Mac mini con macOS 26: **Boost, Boost profundo y Modo juego**. Las demás secciones compilan y abren, pero no tienen pruebas manuales completas. Si algo falla, abre un [*issue*](https://github.com/jenzkupinc/tp-optimizer/issues) con el texto del error y tu versión de macOS.
 
 ## 🧱 Estructura
 
 ```
 *.swift      interfaz y lógica de cada sección
 helper/      ayudante con privilegios (tp-root.swift)
-tests/       pruebas de la lógica: bash tests/run.sh
+tests/       pruebas: bash tests/run.sh (la app) y bash tests/helper-test.sh (el ayudante)
 Resources/   icono y logo
 build.sh     compila, firma e instala
 ```
